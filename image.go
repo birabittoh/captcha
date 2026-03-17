@@ -18,9 +18,9 @@ const (
 	StdWidth  = 240
 	StdHeight = 80
 	// Maximum absolute skew factor of a single digit.
-	maxSkew = 0.7
+	maxSkew = 1.0
 	// Number of background circles.
-	circleCount = 20
+	circleCount = 40
 )
 
 type Image struct {
@@ -57,12 +57,16 @@ func NewImage(id string, digits []byte, width, height int) *Image {
 		m.drawDigit(font[n], x, y)
 		x += m.numWidth + m.dotSize
 	}
-	// Draw strike-through line.
+	// Draw multiple strike-through lines.
 	m.strikeThrough()
-	// Apply wave distortion.
+	m.strikeThrough()
+	// Apply two passes of wave distortion with different parameters.
 	m.distort(m.rng.Float(5, 10), m.rng.Float(100, 200))
+	m.distort(m.rng.Float(3, 7), m.rng.Float(50, 120))
 	// Fill image with random circles.
 	m.fillWithCircles(circleCount, m.dotSize)
+	// Add random pixel noise.
+	m.addNoise()
 	return m
 }
 
@@ -231,6 +235,19 @@ func (m *Image) distort(amplude float64, period float64) {
 		}
 	}
 	m.Paletted = newm
+}
+
+func (m *Image) addNoise() {
+	maxx := m.Bounds().Max.X
+	maxy := m.Bounds().Max.Y
+	// Scatter roughly 8% of pixels as noise dots.
+	numDots := (maxx * maxy) / 12
+	for i := 0; i < numDots; i++ {
+		x := m.rng.Int(0, maxx-1)
+		y := m.rng.Int(0, maxy-1)
+		colorIdx := uint8(m.rng.Int(1, circleCount-1))
+		m.SetColorIndex(x, y, colorIdx)
+	}
 }
 
 func (m *Image) randomBrightness(c color.RGBA, max uint8) color.RGBA {
